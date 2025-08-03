@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Academic Paper Burndown Chart</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .paper-title {
+            background: rgba(255,255,255,0.1);
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 10px;
+            padding: 10px 20px;
+            color: white;
+            font-size: 1.2em;
+            text-align: center;
+            margin-top: 15px;
+            backdrop-filter: blur(10px);
+            width: 100%;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            padding: 30px;
+            background: #f8fafc;
+        }
+        
+        .status-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border-left: 5px solid #4f46e5;
+            transition: transform 0.3s ease;
+        }
+        
+        .status-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .status-card h3 {
+            font-size: 1.8em;
+            margin-bottom: 5px;
+            color: #1f2937;
+        }
+        
+        .status-card p {
+            color: #6b7280;
+            font-size: 0.9em;
+        }
+        
+        .status-ahead { border-left-color: #10b981; }
+        .status-behind { border-left-color: #ef4444; }
+        .status-ontrack { border-left-color: #3b82f6; }
+        
+        .work-breakdown {
+            padding: 30px;
+            background: white;
+        }
+        
+        .section-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .section-card {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 15px;
+            border-left: 6px solid;
+            transition: all 0.3s ease;
+        }
+        
+        .section-card:hover {
+            background: #f1f5f9;
+            transform: translateX(5px);
+        }
+        
+        .section-card h4 {
+            font-size: 1.2em;
+            margin-bottom: 8px;
+            color: #1f2937;
+        }
+        
+        .section-card p {
+            color: #6b7280;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+        }
+        
+        .units-display {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .units-number {
+            font-size: 2em;
+            font-weight: bold;
+        }
+        
+        .input-section {
+            padding: 30px;
+            background: #f8fafc;
+            border-top: 1px solid #e5e7eb;
+        }
+        
+        .input-group {
+            display: flex;
+            gap: 15px;
+            align-items: end;
+            flex-wrap: wrap;
+        }
+        
+        .input-field {
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        .input-field label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #374151;
+        }
+        
+        .input-field input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #d1d5db;
+            border-radius: 10px;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
+        }
+        
+        .input-field input:focus {
+            outline: none;
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background: #4f46e5;
+            color: white;
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            background: #4338ca;
+            transform: translateY(-2px);
+        }
+        
+        .btn-primary:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+        
+        .chart-section {
+            padding: 30px;
+            background: white;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-top: 20px;
+        }
+        
+        .progress-table {
+            padding: 30px;
+            background: #f8fafc;
+            border-top: 1px solid #e5e7eb;
+        }
+        
+        .progress-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 20px;
+        }
+        
+        .progress-card {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .daily-updates {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .update-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin: 5px 0;
+            background: #f8fafc;
+            border-radius: 8px;
+            border-left: 4px solid #4f46e5;
+        }
+        
+        .progress-bar {
+            background: #e5e7eb;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 5px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            transition: width 0.5s ease;
+            border-radius: 4px;
+        }
+        
+        .pdf-preview {
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            height: 400px;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+        
+        .tips {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 20px;
+            margin: 20px 30px;
+            border-radius: 0 10px 10px 0;
+        }
+        
+        h2 {
+            color: #1f2937;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+        
+        h3 {
+            color: #374151;
+            margin-bottom: 10px;
+        }
+        
+        .success { color: #10b981; }
+        .warning { color: #f59e0b; }
+        .danger { color: #ef4444; }
+        
+        @media (max-width: 768px) {
+            .input-group {
+                flex-direction: column;
+            }
+            
+            .input-field {
+                min-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>📝 Academic Paper Progress Tracker</h1>
+            <input type="text" id="paperTitle" class="paper-title" placeholder="Enter your paper title..." value="Research Paper with Professor">
+        </div>
+
+        <!-- Dashboard -->
+        <div class="dashboard">
+            <div class="status-card" id="statusCard">
+                <h3 id="statusText">Ready to start! 📚</h3>
+                <p>Project Status</p>
+            </div>
+            <div class="status-card">
+                <h3 id="completionText">0%</h3>
+                <p>Complete</p>
+            </div>
+            <div class="status-card">
+                <h3 id="dayText">Day 0 of 14</h3>
+                <p>Timeline</p>
+            </div>
+        </div>
+
+        <!-- Work Breakdown -->
+        <div class="work-breakdown">
+            <h2>📋 Paper Sections Breakdown</h2>
+            <div class="section-grid">
+                <div class="section-card" style="border-left-color: #3b82f6;">
+                    <h4>Literature Review</h4>
+                    <p>Find papers, read & summarize, write draft</p>
+                    <div class="units-display">
+                        <span class="units-number" style="color: #3b82f6;">15</span>
+                        <span>work units</span>
+                    </div>
+                </div>
+                <div class="section-card" style="border-left-color: #10b981;">
+                    <h4>Methodology</h4>
+                    <p>Design approach, write methodology</p>
+                    <div class="units-display">
+                        <span class="units-number" style="color: #10b981;">8</span>
+                        <span>work units</span>
+                    </div>
+                </div>
+                <div class="section-card" style="border-left-color: #f59e0b;">
+                    <h4>Results & Analysis</h4>
+                    <p>Collect data, analyze, create figures</p>
+                    <div class="units-display">
+                        <span class="units-number" style="color: #f59e0b;">12</span>
+                        <span>work units</span>
+                    </div>
+                </div>
+                <div class="section-card" style="border-left-color: #ef4444;">
+                    <h4>Writing & Polish</h4>
+                    <p>Intro, discussion, citations, editing</p>
+                    <div class="units-display">
+                        <span class="units-number" style="color: #ef4444;">15</span>
+                        <span>work units</span>
+                    </div>
+                </div>
+            </div>
+            <div style="text-align: center; margin-top: 20px;">
+                <span style="font-size: 1.5em; font-weight: bold; color: #1f2937;">Total: 50 work units</span>
+            </div>
+        </div>
+
+        <!-- PDF Upload Section -->
+        <div class="input-section">
+            <h2>📄 Paper Document Management</h2>
+            <div class="input-group">
+                <div class="input-field">
+                    <label for="pdfUpload">Upload Current Draft (PDF)</label>
+                    <input type="file" id="pdfUpload" accept=".pdf">
+                </div>
+                <div class="input-field">
+                    <label for="versionNotes">Version Notes</label>
+                    <input type="text" id="versionNotes" placeholder="e.g., Added methodology section, fixed citations...">
+                </div>
+                <button class="btn btn-primary" onclick="savePDFVersion()">Save Version</button>
+            </div>
+            <div id="pdfPreview" style="display: none;">
+                <h3>Current Draft Preview</h3>
+                <div class="pdf-preview">
+                    <embed id="pdfViewer" type="application/pdf" width="100%" height="100%">
+                </div>
+            </div>
+        </div>
+
+        <!-- Daily Progress Input -->
+        <div class="input-section" style="background: white;">
+            <h2>📅 Daily Progress Update</h2>
+            <div class="input-group">
+                <div class="input-field">
+                    <label for="remainingWork">Day <span id="currentDayLabel">1</span> - How much work is left? (out of 50 units)</label>
+                    <input type="number" id="remainingWork" min="0" max="50" step="0.5" placeholder="Enter remaining work...">
+                </div>
+                <div class="input-field">
+                    <label for="dailyNotes">Today's Progress Notes</label>
+                    <input type="text" id="dailyNotes" placeholder="What did you accomplish today?">
+                </div>
+                <button class="btn btn-primary" onclick="addProgress()">Update Progress</button>
+                <button class="btn btn-secondary" onclick="resetProject()">Reset Project</button>
+            </div>
+            <div class="input-group" style="margin-top: 15px; border-top: 1px solid #e5e7eb; padding-top: 15px;">
+                <h3 style="width: 100%; margin-bottom: 10px;">📤 Export & Share</h3>
+                <button class="btn btn-primary" onclick="downloadChart()">📊 Download Chart</button>
+                <button class="btn btn-primary" onclick="downloadReport()">📋 Download Report</button>
+                <button class="btn btn-secondary" onclick="downloadData()">💾 Download Data</button>
+            </div>
+        </div>
+
+        <!-- Chart Section -->
+        <div class="chart-section">
+            <h2>📈 Burndown Chart</h2>
+            <div class="chart-container">
+                <canvas id="burndownChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Progress Table -->
+        <div class="progress-table" id="progressSection" style="display: none;">
+            <h2>📊 Progress Summary</h2>
+            <div class="progress-grid">
+                <div class="progress-card">
+                    <h3>Daily Updates</h3>
+                    <div class="daily-updates" id="dailyUpdates"></div>
+                </div>
+                <div class="progress-card">
+                    <h3>Document Versions</h3>
+                    <div id="documentVersions"></div>
+                </div>
+                <div class="progress-card">
+                    <h3>Section Progress</h3>
+                    <div id="sectionProgress"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tips -->
+        <div class="tips">
+            <h3>💡 Daily Tips</h3>
+            <ul>
+                <li>Update every evening: "How much work do I have left?"</li>
+                <li>Upload PDF drafts to track document evolution</li>
+                <li>Show this chart to your professor - they'll be impressed!</li>
+                <li>Green = ahead, blue = on track, red = need to catch up</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Project data
+        let currentDay = 1;
+        let totalWork = 50;
+        let totalDays = 14;
+        let progressData = [];
+        let documentVersions = [];
+        let currentPDF = null;
+        let chart = null;
+
+        const sections = [
+            { name: 'Literature Review', units: 15, color: '#3b82f6' },
+            { name: 'Methodology', units: 8, color: '#10b981' },
+            { name: 'Results & Analysis', units: 12, color: '#f59e0b' },
+            { name: 'Writing & Polish', units: 15, color: '#ef4444' }
+        ];
+
+        // Initialize chart
+        function initChart() {
+            const ctx = document.getElementById('burndownChart').getContext('2d');
+            
+            const idealData = [];
+            for (let day = 0; day <= totalDays; day++) {
+                idealData.push(totalWork - (totalWork * day / totalDays));
+            }
+
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: totalDays + 1}, (_, i) => i),
+                    datasets: [{
+                        label: 'Ideal Progress',
+                        data: idealData,
+                        borderColor: '#9ca3af',
+                        backgroundColor: 'transparent',
+                        borderDash: [8, 8],
+                        borderWidth: 2,
+                        pointRadius: 0
+                    }, {
+                        label: 'Your Actual Progress',
+                        data: new Array(totalDays + 1).fill(null),
+                        borderColor: '#4f46e5',
+                        backgroundColor: '#4f46e5',
+                        borderWidth: 4,
+                        pointRadius: 6,
+                        pointBackgroundColor: '#4f46e5',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Days'
+                            },
+                            grid: {
+                                color: '#e5e7eb'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Work Units Remaining'
+                            },
+                            grid: {
+                                color: '#e5e7eb'
+                            },
+                            min: 0,
+                            max: totalWork
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        },
+                        tooltip: {
+                            backgroundColor: 'white',
+                            titleColor: '#1f2937',
+                            bodyColor: '#6b7280',
+                            borderColor: '#d1d5db',
+                            borderWidth: 1
+                        }
+                    }
+                }
+            });
+        }
+
+        // Handle PDF upload
+        document.getElementById('pdfUpload').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file && file.type === 'application/pdf') {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    currentPDF = {
+                        name: file.name,
+                        data: e.target.result,
+                        size: file.size
+                    };
+                    
+                    // Show preview
+                    document.getElementById('pdfPreview').style.display = 'block';
+                    document.getElementById('pdfViewer').src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function savePDFVersion() {
+            if (!currentPDF) {
+                alert('Please upload a PDF file first');
+                return;
+            }
+
+            const notes = document.getElementById('versionNotes').value.trim();
+            
+            documentVersions.push({
+                name: currentPDF.name,
+                data: currentPDF.data,
+                notes: notes,
+                date: new Date().toLocaleDateString(),
+                day: currentDay - 1
+            });
+
+            // Clear inputs
+            document.getElementById('pdfUpload').value = '';
+            document.getElementById('versionNotes').value = '';
+            document.getElementById('pdfPreview').style.display = 'none';
+            currentPDF = null;
+
+            updateProgressSection();
+            alert('Document version saved successfully!');
+        }
+
+        function viewPDF(index) {
+            const version = documentVersions[index];
+            if (version) {
+                const newWindow = window.open('', '_blank');
+                newWindow.document.write(`
+                    <html>
+                        <head><title>${version.name} - Version ${index + 1}</title></head>
+                        <body style="margin: 0;">
+                            <embed src="${version.data}" type="application/pdf" width="100%" height="100vh">
+                        </body>
+                    </html>
+                `);
+            }
+        }
+
+        function addProgress() {
+            const remainingInput = document.getElementById('remainingWork');
+            const notesInput = document.getElementById('dailyNotes');
+            const remaining = parseFloat(remainingInput.value);
+            const notes = notesInput.value.trim();
+            
+            if (isNaN(remaining) || remaining < 0 || remaining > totalWork || currentDay > totalDays) {
+                return;
+            }
+
+            // Add to progress data
+            progressData.push({
+                day: currentDay,
+                remaining: remaining,
+                completed: totalWork - remaining,
+                notes: notes,
+                date: new Date().toLocaleDateString()
+            });
+
+            // Update chart
+            chart.data.datasets[1].data[currentDay] = remaining;
+            chart.update();
+
+            // Update UI
+            currentDay++;
+            document.getElementById('currentDayLabel').textContent = currentDay;
+            remainingInput.value = '';
+            notesInput.value = '';
+            
+            updateDashboard();
+            updateProgressSection();
+            
+            if (currentDay > totalDays) {
+                remainingInput.disabled = true;
+                notesInput.disabled = true;
+                document.querySelector('.btn-primary').disabled = true;
+            }
+        }
+
+        function updateDashboard() {
+            if (progressData.length === 0) return;
+
+            const lastEntry = progressData[progressData.length - 1];
+            const idealAtDay = totalWork - (totalWork * lastEntry.day / totalDays);
+            const difference = lastEntry.remaining - idealAtDay;
+            
+            // Update status
+            const statusCard = document.getElementById('statusCard');
+            const statusText = document.getElementById('statusText');
+            
+            statusCard.className = 'status-card';
+            
+            if (difference < -3) {
+                statusText.textContent = 'Ahead of schedule! 🚀';
+                statusCard.classList.add('status-ahead');
+            } else if (difference > 5) {
+                statusText.textContent = 'Behind schedule - need to catch up ⚠️';
+                statusCard.classList.add('status-behind');
+            } else {
+                statusText.textContent = 'Right on track! ✅';
+                statusCard.classList.add('status-ontrack');
+            }
+
+            // Update completion percentage
+            const completion = Math.round(((totalWork - lastEntry.remaining) / totalWork) * 100);
+            document.getElementById('completionText').textContent = completion + '%';
+            
+            // Update day
+            document.getElementById('dayText').textContent = `Day ${lastEntry.day} of ${totalDays}`;
+        }
+
+        function updateProgressSection() {
+            if (progressData.length === 0) return;
+
+            document.getElementById('progressSection').style.display = 'block';
+            
+            // Update daily updates
+            const dailyUpdates = document.getElementById('dailyUpdates');
+            dailyUpdates.innerHTML = '';
+            
+            progressData.forEach((entry, index) => {
+                const workDone = index === 0 ? totalWork - entry.remaining : progressData[index-1].remaining - entry.remaining;
+                const updateItem = document.createElement('div');
+                updateItem.className = 'update-item';
+                updateItem.innerHTML = `
+                    <div>
+                        <span><strong>Day ${entry.day}</strong> (${entry.date})</span>
+                        <div style="font-size: 0.85em; color: #6b7280; margin-top: 2px;">
+                            ${entry.notes || 'No notes added'}
+                        </div>
+                    </div>
+                    <span>
+                        ${entry.remaining} units left
+                        ${workDone > 0 ? `<span class="success">(+${workDone} done)</span>` : ''}
+                    </span>
+                `;
+                dailyUpdates.appendChild(updateItem);
+            });
+
+            // Update document versions
+            const documentVersionsDiv = document.getElementById('documentVersions');
+            documentVersionsDiv.innerHTML = '';
+            
+            if (documentVersions.length === 0) {
+                documentVersionsDiv.innerHTML = '<p style="color: #6b7280; font-style: italic;">No document versions uploaded yet</p>';
+            } else {
+                documentVersions.forEach((version, index) => {
+                    const versionItem = document.createElement('div');
+                    versionItem.className = 'update-item';
+                    versionItem.innerHTML = `
+                        <div>
+                            <span><strong>Version ${index + 1}</strong></span>
+                            <div style="font-size: 0.85em; color: #6b7280; margin-top: 2px;">
+                                ${version.date} - ${version.notes || 'No notes'}
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 0.8em;" onclick="viewPDF(${index})">View</button>
+                    `;
+                    documentVersionsDiv.appendChild(versionItem);
+                });
+            }
+
+            // Update section progress
+            const lastEntry = progressData[progressData.length - 1];
+            const overallCompletion = Math.round(((totalWork - lastEntry.remaining) / totalWork) * 100);
+            
+            const sectionProgress = document.getElementById('sectionProgress');
+            sectionProgress.innerHTML = '';
+            
+            sections.forEach(section => {
+                const progressItem = document.createElement('div');
+                progressItem.style.marginBottom = '15px';
+                progressItem.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                        <span style="font-size: 0.9em;">${section.name}</span>
+                        <span style="font-size: 0.8em;">${Math.min(100, overallCompletion)}%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${Math.min(100, overallCompletion)}%; background-color: ${section.color};"></div>
+                    </div>
+                `;
+                sectionProgress.appendChild(progressItem);
+            });
+        }
+
+        function resetProject() {
+            currentDay = 1;
+            progressData = [];
+            documentVersions = [];
+            currentPDF = null;
+            
+            // Reset chart
+            chart.data.datasets[1].data = new Array(totalDays + 1).fill(null);
+            chart.update();
+            
+            // Reset UI
+            document.getElementById('currentDayLabel').textContent = currentDay;
+            document.getElementById('remainingWork').value = '';
+            document.getElementById('dailyNotes').value = '';
+            document.getElementById('pdfUpload').value = '';
+            document.getElementById('versionNotes').value = '';
+            document.getElementById('pdfPreview').style.display = 'none';
+            document.getElementById('remainingWork').disabled = false;
+            document.getElementById('dailyNotes').disabled = false;
+            document.querySelector('.btn-primary').disabled = false;
+            
+            // Reset dashboard
+            document.getElementById('statusText').textContent = 'Ready to start! 📚';
+            document.getElementById('completionText').textContent = '0%';
+            document.getElementById('dayText').textContent = `Day 0 of ${totalDays}`;
+            document.getElementById('statusCard').className = 'status-card';
+            
+            // Hide progress section
+            document.getElementById('progressSection').style.display = 'none';
+        }
+
+        // Initialize when page loads
+        window.addEventListener('load', function() {
+            initChart();
+        });
+
+        // Download Functions
+        function downloadChart() {
+            const canvas = document.getElementById('burndownChart');
+            const link = document.createElement('a');
+            link.download = `${document.getElementById('paperTitle').value.replace(/[^a-z0-9]/gi, '_')}_burndown_chart.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+
+        function downloadReport() {
+            const paperTitle = document.getElementById('paperTitle').value || 'Academic Paper';
+            const reportDate = new Date().toLocaleDateString();
+            
+            let reportHTML = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>${paperTitle} - Progress Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .header { background: #4f46e5; color: white; padding: 20px; border-radius: 10px; text-align: center; margin-bottom: 30px; }
+        .section { margin-bottom: 30px; padding: 20px; border: 1px solid #e5e7eb; border-radius: 10px; }
+        .status-good { color: #10b981; font-weight: bold; }
+        .status-warning { color: #f59e0b; font-weight: bold; }
+        .status-danger { color: #ef4444; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #e5e7eb; padding: 10px; text-align: left; }
+        th { background: #f8fafc; }
+        .chart-placeholder { background: #f8fafc; padding: 40px; text-align: center; border: 2px dashed #d1d5db; border-radius: 10px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📝 ${paperTitle}</h1>
+        <p>Progress Report - Generated on ${reportDate}</p>
+    </div>
+    
+    <div class="section">
+        <h2>📊 Project Status</h2>`;
+
+            if (progressData.length > 0) {
+                const lastEntry = progressData[progressData.length - 1];
+                const completion = Math.round(((totalWork - lastEntry.remaining) / totalWork) * 100);
+                const idealAtDay = totalWork - (totalWork * lastEntry.day / totalDays);
+                const difference = lastEntry.remaining - idealAtDay;
+                
+                let statusClass = 'status-good';
+                let statusText = 'On Track';
+                if (difference < -3) {
+                    statusClass = 'status-good';
+                    statusText = 'Ahead of Schedule';
+                } else if (difference > 5) {
+                    statusClass = 'status-danger';
+                    statusText = 'Behind Schedule';
+                }
+                
+                reportHTML += `
+        <p><strong>Current Status:</strong> <span class="${statusClass}">${statusText}</span></p>
+        <p><strong>Completion:</strong> ${completion}% (${totalWork - lastEntry.remaining}/${totalWork} work units)</p>
+        <p><strong>Timeline:</strong> Day ${lastEntry.day} of ${totalDays}</p>
+        <p><strong>Remaining Work:</strong> ${lastEntry.remaining} units</p>`;
+            } else {
+                reportHTML += `<p>No progress data recorded yet.</p>`;
+            }
+
+            reportHTML += `
+    </div>
+    
+    <div class="section">
+        <h2>📋 Work Breakdown</h2>
+        <table>
+            <tr><th>Section</th><th>Work Units</th><th>Tasks</th></tr>
+            <tr><td>Literature Review</td><td>15</td><td>Find papers, read & summarize, write draft</td></tr>
+            <tr><td>Methodology</td><td>8</td><td>Design approach, write methodology</td></tr>
+            <tr><td>Results & Analysis</td><td>12</td><td>Collect data, analyze, create figures</td></tr>
+            <tr><td>Writing & Polish</td><td>15</td><td>Intro, discussion, citations, editing</td></tr>
+            <tr><td><strong>Total</strong></td><td><strong>50</strong></td><td><strong>Complete Paper</strong></td></tr>
+        </table>
+    </div>`;
+
+            if (progressData.length > 0) {
+                reportHTML += `
+    <div class="section">
+        <h2>📅 Daily Progress Log</h2>
+        <table>
+            <tr><th>Day</th><th>Date</th><th>Work Remaining</th><th>Work Completed</th><th>Notes</th></tr>`;
+                
+                progressData.forEach((entry, index) => {
+                    const workDone = index === 0 ? totalWork - entry.remaining : progressData[index-1].remaining - entry.remaining;
+                    reportHTML += `
+            <tr>
+                <td>${entry.day}</td>
+                <td>${entry.date}</td>
+                <td>${entry.remaining}</td>
+                <td>${workDone > 0 ? '+' + workDone : '0'}</td>
+                <td>${entry.notes || 'No notes'}</td>
+            </tr>`;
+                });
+                
+                reportHTML += `
+        </table>
+    </div>`;
+            }
+
+            reportHTML += `
+    <div class="section">
+        <h2>📈 Chart Visualization</h2>
+        <div class="chart-placeholder">
+            📊 Burndown Chart<br>
+            <small>Download chart separately using "Download Chart" button</small>
+        </div>
+        <p><em>Note: Use the main interface to download the chart as PNG image</em></p>
+    </div>
+    
+    <div class="section">
+        <h2>📝 Summary</h2>
+        <p>This report provides a comprehensive overview of the academic paper progress. 
+        The burndown methodology helps track completion against the planned timeline, 
+        ensuring timely delivery and identifying potential bottlenecks early.</p>
+    </div>
+</body>
+</html>`;
+
+            const blob = new Blob([reportHTML], { type: 'text/html' });
+            const link = document.createElement('a');
+            link.download = `${paperTitle.replace(/[^a-z0-9]/gi, '_')}_progress_report.html`;
+            link.href = URL.createObjectURL(blob);
+            link.click();
+        }
+
+        function downloadData() {
+            const paperTitle = document.getElementById('paperTitle').value || 'Academic Paper';
+            
+            let csvContent = "Day,Date,Ideal Remaining,Actual Remaining,Work Completed,Notes\n";
+            
+            // Add data rows
+            for (let day = 0; day <= totalDays; day++) {
+                const idealRemaining = totalWork - (totalWork * day / totalDays);
+                const actualEntry = progressData.find(p => p.day === day);
+                
+                if (actualEntry) {
+                    const workCompleted = totalWork - actualEntry.remaining;
+                    csvContent += `${day},${actualEntry.date},${idealRemaining.toFixed(1)},${actualEntry.remaining},"${workCompleted}","${actualEntry.notes || ''}"\n`;
+                } else if (day === 0) {
+                    csvContent += `${day},Start,${idealRemaining.toFixed(1)},${totalWork},0,"Project Start"\n`;
+                } else {
+                    csvContent += `${day},,${idealRemaining.toFixed(1)},,,""\n`;
+                }
+            }
+            
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const link = document.createElement('a');
+            link.download = `${paperTitle.replace(/[^a-z0-9]/gi, '_')}_data.csv`;
+            link.href = URL.createObjectURL(blob);
+            link.click();
+        }
+    </script>
+</body>
+</html>
